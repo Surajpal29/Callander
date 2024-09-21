@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import GenCallander from "../components/GenCallander.jsx";
 import KeyboardBackspaceIcon from "@mui/icons-material/KeyboardBackspace";
@@ -12,6 +12,13 @@ const Callander = () => {
     year: "",
     time: "",
   });
+  const [events, setEvents] = useState([]);
+
+  // Local storage se events ko load karna on initial render
+  useEffect(() => {
+    const storedEvents = JSON.parse(localStorage.getItem("events")) || [];
+    setEvents(storedEvents);
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -28,9 +35,32 @@ const Callander = () => {
   function handleButtonCreate(e) {
     e.preventDefault();
     const { eventName, date, month, year, time } = eventData;
-    console.log(
-      `Event: ${eventName}, Date: ${date}-${month}-${year}, Time: ${time}`
-    );
+
+    // Naya event object
+    const newEvent = {
+      eventName,
+      date,
+      month,
+      year,
+      time,
+    };
+
+    // Local storage me events ko save karna
+    const updatedEvents = [...events, newEvent];
+    setEvents(updatedEvents);
+    localStorage.setItem("events", JSON.stringify(updatedEvents));
+
+    console.log("Event added successfully:", newEvent);
+
+    // Form reset aur modal close
+    setEventData({
+      eventName: "",
+      date: "",
+      month: "",
+      year: "",
+      time: "",
+    });
+    setIsAddEvent(false);
   }
 
   return (
@@ -127,7 +157,7 @@ const Callander = () => {
       <div className="w-full flex items-center justify-center">
         <div>
           <p className="font-fontweight700 uppercase leading-lineheight mt-5  md:ml-0">
-            YOU CAN ADD only one event in one day
+            you can add only one event in one day
           </p>
           <button
             onClick={HandleAddEvent}
@@ -138,7 +168,7 @@ const Callander = () => {
         </div>
       </div>
 
-      <GenCallander />
+      <GenCallander events={events} />
     </div>
   );
 };

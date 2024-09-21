@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 
-const Calendar = () => {
+const Calendar = ({ events }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [daysInMonth, setDaysInMonth] = useState([]);
+  const [selectedDay, setSelectedDay] = useState(null); // Track selected day
+  const [modalVisible, setModalVisible] = useState(false); // Modal visibility
 
   useEffect(() => {
     generateCalendar(currentDate);
@@ -15,21 +17,17 @@ const Calendar = () => {
     const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
 
     let days = [];
-    // Empty cells for days before the first day of the month
     for (let i = 0; i < firstDayOfMonth; i++) {
-      days.push(""); // Adding empty cells
+      days.push(""); // Empty cells for days before the first day
     }
-    // Days of the current month
     for (let i = 1; i <= lastDayOfMonth; i++) {
       days.push(i); // Adding days of the month
     }
-    // Empty cells for remaining spaces to make a 7x5 grid (35 cells total)
-    const totalCells = 35; // 7 columns * 5 rows = 35 cells
+    const totalCells = 42;
     const remainingCells = totalCells - days.length;
     for (let i = 0; i < remainingCells; i++) {
-      days.push(""); // Adding empty cells to the end
+      days.push(""); // Empty cells to make 7x6 grid
     }
-
     setDaysInMonth(days);
   };
 
@@ -49,12 +47,39 @@ const Calendar = () => {
     return date.toLocaleString("default", { month: "long" });
   };
 
-  const currentDay = currentDate.getDay(); // Day of the week (0-6)
-  const currentMonthDate = currentDate.getDate(); // Date of the current day (1-31)
+  const currentDay = currentDate.getDay();
+  const currentMonthDate = currentDate.getDate();
+
+  const findEventsForDay = (day, month, year) => {
+    return events.filter((event) => {
+      const eventDay = parseInt(event.date);
+      const eventMonth = parseInt(event.month);
+      const eventYear = parseInt(event.year);
+      return eventDay === day && eventMonth === month + 1 && eventYear === year;
+    });
+  };
+
+  const handleDayClick = (day) => {
+    setSelectedDay(day);
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+    setSelectedDay(null);
+  };
+
+  // Function to handle click outside the modal content
+  const handleOverlayClick = (e) => {
+    // If the user clicks on the overlay (not the modal content), close the modal
+    if (e.target.className.includes("modal-overlay")) {
+      closeModal();
+    }
+  };
 
   return (
-    <div className="w-full mx-auto p-4 my-5">
-      <div className="w-full flex justify-between items-center mb-4 ">
+    <div className="w-full mx-auto p-4 mt-5">
+      <div className="w-full flex justify-between items-center mb-4">
         <p className="w-[13%] text-gray-500 font-bold md:text-xl">
           {getMonth(currentDate)}, {currentDate.getDate()}
           {currentDate.getDate() > 3
@@ -67,7 +92,7 @@ const Calendar = () => {
             ? "st"
             : ""}
         </p>
-        <div className="w-[20%] flex ">
+        <div className="w-[20%] flex">
           <button
             onClick={goToPreviousMonth}
             className="md:text-lg font-semibold p-2"
@@ -95,7 +120,7 @@ const Calendar = () => {
             key={day}
             className={`text-sm md:text-xl font-bold ${
               currentDay === index
-                ? "bg-blue-500 text-white py-2 rounded-md "
+                ? "bg-blue-500 text-white py-2 rounded-md"
                 : "text-gray-500"
             }`}
           >
@@ -104,20 +129,87 @@ const Calendar = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-7 grid-rows-5 mt-2">
-        {daysInMonth.map((day, index) => (
-          <div
-            key={index}
-            className={`p-2 text-start h-[15vw] font-bold ${
-              day ? "border border-gray-300 border-t-0" : ""
-            } ${
-              day === currentMonthDate ? "border-blue-500 bg-blue-400 " : ""
-            }`}
-          >
-            {day}
-          </div>
-        ))}
+      <div className="grid grid-cols-7 grid-rows-6 mt-2">
+        {daysInMonth.map((day, index) => {
+          const eventsForDay = day
+            ? findEventsForDay(
+                day,
+                currentDate.getMonth(),
+                currentDate.getFullYear()
+              )
+            : [];
+
+          return (
+            <div
+              key={index}
+              className={`p-2 text-start h-[15vw] font-bold ${
+                day ? "border border-gray-300 border-t-0" : ""
+              } ${
+                day === currentMonthDate ? "border-blue-500 bg-blue-400" : ""
+              }`}
+              onClick={() => day && handleDayClick(day)}
+            >
+              <div>{day}</div>
+              {eventsForDay.length > 0 &&
+                eventsForDay.map((event, eventIndex) => (
+                  <div
+                    key={eventIndex}
+                    className="text-sm  p-1 mt-1 rounded-md"
+                  >
+                    {event.eventName} <br />
+                    {event.time}
+                  </div>
+                ))}
+            </div>
+          );
+        })}
       </div>
+
+      {modalVisible && selectedDay && (
+        <div
+          className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center modal-overlay"
+          onClick={handleOverlayClick}
+        >
+          <div className="bg-white p-5 rounded-lg w-[80%] max-w-lg">
+            <h2 className="text-xl font-bold mb-4">
+              Events for {selectedDay} {getMonth(currentDate)}{" "}
+              {currentDate.getFullYear()}
+            </h2>
+            <div className="flex flex-col">
+              {Array.from({ length: 24 }, (_, hour) => (
+                <div
+                  key={hour}
+                  className="flex justify-between items-center border-b py-2"
+                >
+                  <span>{hour}:00</span>
+                  <div className="flex-1 pl-4">
+                    {findEventsForDay(
+                      selectedDay,
+                      currentDate.getMonth(),
+                      currentDate.getFullYear()
+                    )
+                      .filter((event) => event.time.startsWith(`${hour}:`))
+                      .map((event, index) => (
+                        <div
+                          key={index}
+                          className="text-sm bg-blue-400 p-1 rounded-md mb-2"
+                        >
+                          {event.eventName} at {event.time}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={closeModal}
+              className="mt-4 bg-red-500 text-white p-2 rounded-md"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
